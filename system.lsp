@@ -4,14 +4,18 @@
 
 (def atom? (fn (x) (not (list? x))))
 
-(def splice-body (fn (body) (cond ((atom? body) body)
-                                   ((= (tail body) '()) (head body))
-                                   (else (cons do body)))))
+(def splice-body
+  (fn (body)
+      (cond ((atom? body) body)
+      ((= (tail body) '()) (head body))
+      (else (cons do body)))))
 
-(def defmacro (macro (name args & body) (list 'def name (list 'macro args (splice-body body)))))
+(def defmacro
+  (macro (name args & body)
+         (list 'def name (list 'macro args (splice-body body)))))
 
 (defmacro defun (name args & body)
-	(list 'def name (list 'fn args (splice-body body))))  
+  (list 'def name (list 'fn args (splice-body body))))
 
 (defun null? (l)
   (= l '()))
@@ -20,13 +24,13 @@
   (cond ((null? e) (list 'cond (list c t)))
         (else (list 'cond (list c t) (list 'else (head e))))))
 
-(defun map (f lst) 
+(defun map (f lst)
   (if (null? lst)
-       lst
-       (cons (f (head lst)) (map f (tail lst)))))
+      lst
+      (cons (f (head lst)) (map f (tail lst)))))
 
 (defmacro let (binds & body)
-  (cons (list 'fn (map head binds) (splice-body body)) (map snd binds)))      
+  (cons (list 'fn (map head binds) (splice-body body)) (map snd binds)))
 
 (def fst head)
 
@@ -55,26 +59,25 @@
 (defun qq-expand (x)
   (if (list? x)
       (cond ((null? x) (list 'quote '()))
-	    ((= (head x) 'unquote) (snd x))
-	    ((= (head x) 'quasiquote) (qq-expand (qq-expand (snd x))))
-	    (else (list 'append 
-		    (qq-expand-list (head x))
-		    (qq-expand (tail x)))))
+            ((= (head x) 'unquote) (snd x))
+            ((= (head x) 'quasiquote) (qq-expand (qq-expand (snd x))))
+            (else (list 'append
+                    (qq-expand-list (head x))
+                    (qq-expand (tail x)))))
       (list 'quote x)))
 
 (defun qq-expand-list (x)
-   (if (list? x)
+  (if (list? x)
       (cond ((null? x) (list 'quote (list '())))
-	    ((= (head x) 'unquote) (list 'list (snd x)))
-	    ((= (head x) 'unquote-splicing) (snd x))
-	    ((= (head x) 'quasiquote) (qq-expand-list (qq-expand (snd x))))
-	    (else 
-	     (list 'list (list 'append 
-		    (qq-expand-list (head x))
-		    (qq-expand (tail x))))))
-(list 'quote (list x))))
+            ((= (head x) 'unquote) (list 'list (snd x)))
+            ((= (head x) 'unquote-splicing) (snd x))
+            ((= (head x) 'quasiquote) (qq-expand-list (qq-expand (snd x))))
+            (else (list 'list (list 'append
+                                    (qq-expand-list (head x))
+                                    (qq-expand (tail x))))))
+      (list 'quote (list x))))
 
 (defun zip l
   (if (any? null? l)
       '()
-       (cons (map head l) (apply zip (map tail l)))))
+      (cons (map head l) (apply zip (map tail l)))))
