@@ -10,12 +10,13 @@
 #define INITIAL_HEAP_SIZE 64000
 #define STACK_SIZE (160 * 1024)
 #define ENV_SIZE (160 * 1024)
+#define UNUSED(x) (void)(x)
 
-typedef uint8_t uint8;
-typedef uint64_t value_t;
+typedef uintptr_t value_t;
 typedef int number_t;
 typedef uint8_t hash_t;
-typedef uint64_t type_t;
+typedef uintptr_t type_t;
+typedef char* memory_t;
 
 const int MAX_HASH = 255;
 hash_t string_hash(const char* str)
@@ -50,7 +51,7 @@ hash_t string_hash(const char* str)
 #define builtin_val(x) ((Builtin *)ptr(x))
 #define is_num(x) (tag(x) == TAG_NUM)
 #define is_list(x) (tag(x) == TAG_LIST)
-#define is_spec(x) (tag(x) == TAG_SPEC)
+//#define is_spec(x) (tag(x) == TAG_SPEC)
 #define is_sym(x) (tag(x) == TAG_SYM)
 #define list(x) (tagptr((x), TAG_LIST))
 #define type(x) *((type_t*)x)
@@ -89,7 +90,7 @@ typedef enum {
     F_LISTP, F_SYMBOLP, F_NUMBERP, F_BUILTINP, F_PRINT, N_BUILTINS
 } BuiltinCode;
 
-const char builtin_names[][10] = {
+const char* builtin_names[] = {
     "fn", "macro", "quote", "cond", "do", "def", "and", "or",
     "+", "-", "/", "*", "<", ">", "=", "not", "cons", "head", "tail",
     "eval", "apply",
@@ -98,22 +99,22 @@ const char builtin_names[][10] = {
 
 value_t FN, MACRO, NIL, T, QUOTE, REST, UNQUOTE, QUASIQUOTE, UNQUOTE_SPLICING;
 
-char* heap, * newheap, * curheap, * lim, * gc_tresh;
-float heap_resize_ratio = 2.0;
-int heap_size;
+const float HEAP_RESIZE_RATIO = 2.0;
+memory_t g_heap, g_newheap, g_curheap, g_lim, g_gc_tresh;
+int g_heap_size;
 
-value_t* stack;
-int curstack = 0, stack_size = STACK_SIZE;
+value_t* g_stack;
+int g_sp = 0, g_stack_size = STACK_SIZE;
 
-value_t* env;
-int curenv = 0, env_size = ENV_SIZE;
+value_t* g_env;
+int g_env_sp = 0, g_env_size = ENV_SIZE;
 
 typedef struct {
     type_t type;
     BuiltinCode code;
 } Builtin;
 
-Builtin builtins[N_BUILTINS];
+Builtin g_builtins[N_BUILTINS];
 
 Symbol* symtab = NULL;
 // for error handling in REPL
@@ -161,51 +162,51 @@ void* halloc(size_t);
 
 value_t peek()
 {
-    return stack[curstack - 1];
+    return g_stack[g_sp - 1];
 }
 
 void push(value_t v)
 {
-    if (curstack >= stack_size) {
+    if (g_sp >= g_stack_size) {
         error("Stack overflow");
     }
-    stack[curstack] = v;
-    curstack++;
+    g_stack[g_sp] = v;
+    g_sp++;
 }
 
 value_t pop()
 {
-    return stack[--curstack];
+    return g_stack[--g_sp];
 }
 
 void env_push(value_t v)
 {
-    if (curenv >= env_size - 1) {
+    if (g_env_sp >= g_env_size - 1) {
         error("Env overflow");
     }
-    env[curenv] = v;
-    curenv++;
+    g_env[g_env_sp] = v;
+    g_env_sp++;
 }
 
 void restore_env(int ee)
 {
-    curenv = ee;
+    g_env_sp = ee;
 }
 
 value_t env_pop()
 {
-    return env[--curenv];
+    return g_env[--g_env_sp];
 }
 
 value_t popn(int n)
 {
-    curstack -= n;
-    return stack[curstack];
+    g_sp -= n;
+    return g_stack[g_sp];
 }
 
 void restore_stack(int n)
 {
-    curstack = n;
+    g_sp = n;
 }
 
 void push_reverse_list(value_t l)
@@ -236,8 +237,8 @@ void dump_symtab(Symbol* s)
 
 void dump_heap()
 {
-    char* tmp = heap;
-    while (tmp < curheap - sizeof(List)) {
+    memory_t tmp = g_heap;
+    while (tmp < g_curheap - sizeof(List)) {
         value_t val = ((List*)tmp)->head;
         print(val);
         printf(" -|- ");
@@ -248,8 +249,8 @@ void dump_heap()
 void dump_stack()
 {
     int cur = 0;
-    while (cur < curstack) {
-        print(stack[cur]);
+    while (cur < g_sp) {
+        print(g_stack[cur]);
         cur++;
         printf("\t");
     }
@@ -259,8 +260,8 @@ void dump_stack()
 void dump_env()
 {
     int cur = 0;
-    while (cur < curenv) {
-        print(env[cur]);
+    while (cur < g_env_sp) {
+        print(g_env[cur]);
         cur++;
         printf("\t");
     }
@@ -287,32 +288,32 @@ void gc()
     }
     is_gc = true;
 
-    int oh = heap_size;
-    heap_size = (int)(heap_size * heap_resize_ratio);
-    if (newheap == NULL) {
-        newheap = malloc(heap_size);
+    int oh = g_heap_size;
+    g_heap_size = (int)(g_heap_size * HEAP_RESIZE_RATIO);
+    if (g_newheap == NULL) {
+        g_newheap = malloc(g_heap_size);
     } else {
-        newheap = realloc(newheap, heap_size);
+        g_newheap = realloc(g_newheap, g_heap_size);
     }
 
-    char* t = heap;
-    heap = newheap;
-    newheap = t;
+    memory_t t = g_heap;
+    g_heap = g_newheap;
+    g_newheap = t;
 
-    curheap = heap;
-    lim = heap + heap_size;
+    g_curheap = g_heap;
+    g_lim = g_heap + g_heap_size;
     int ss = 0;
 
     //printf("before:"); dump_stack();
-    while (ss < curstack) {
-        stack[ss] = relocate(stack[ss]);
+    while (ss < g_sp) {
+        g_stack[ss] = relocate(g_stack[ss]);
         ss++;
     }
-    int ee = curenv - 2;
+    int ee = g_env_sp - 2;
 
     while (ee >= 0) {
-        if (type_of(env[ee] != TYPE_SYM)) {
-            env[ee] = relocate(env[ee]);
+        if (type_of(g_env[ee] != TYPE_SYM)) {
+            g_env[ee] = relocate(g_env[ee]);
         }
         ee -= 2;
     }
@@ -320,8 +321,8 @@ void gc()
     relocate_symtab(symtab);
 
     is_gc = false;
-    // heap poisoning for trapping bugs
-    memset(newheap, 0x0A, oh);
+    // g_heap poisoning for trapping bugs
+    memset(g_newheap, 0x0A, oh);
 }
 
 void relocate_symtab(Symbol* sym)
@@ -371,11 +372,11 @@ value_t relocate(value_t v)
 
 void* halloc(size_t s)
 {
-    if (curheap + s >= lim) {
+    if (g_curheap + s >= g_lim) {
         gc();
     }
-    char* h = curheap;
-    curheap += s;
+    memory_t h = g_curheap;
+    g_curheap += s;
     return (void*)h;
 }
 
@@ -490,7 +491,7 @@ static void push_list(value_t l)
 static value_t pop_list(int ss)
 {
     push(EMPTY_LIST);
-    while (curstack > ss + 1) {
+    while (g_sp > ss + 1) {
         value_t t = pop();
         value_t h = pop();
         push(cons_(h, t));
@@ -501,7 +502,7 @@ static value_t pop_list(int ss)
 static value_t make_list(value_t h, ...)
 {
     va_list args;
-    int ss = curstack;
+    int ss = g_sp;
     va_start(args, h);
 
     for (value_t v = h; v != END; v = va_arg(args, value_t)) {
@@ -523,7 +524,7 @@ static inline bool is_space(char c)
 
 static inline char fpeekc(FILE* f)
 {
-    char c = getc(f);
+    char c = (char)getc(f);
     /* printf("%c\n", c); */
     ungetc(c, f);
     return c;
@@ -531,9 +532,9 @@ static inline char fpeekc(FILE* f)
 
 void skip_spaces(FILE* f)
 {
-    char c = fgetc(f);
+    char c = (char)fgetc(f);
     while (is_space(c)) {
-        c = getc(f);
+        c = (char)getc(f);
     }
     ungetc(c, f);
 }
@@ -546,7 +547,7 @@ void read_sym(FILE* f, Symbol** env)
     char buf[MAX_NAME];
     int i = 0;
     do {
-        c = getc(f);
+        c = (char)getc(f);
         buf[i] = c;
         c = fpeekc(f);
         i++;
@@ -560,11 +561,12 @@ void read_sym(FILE* f, Symbol** env)
 
 void read_int(FILE* f, Symbol** env)
 {
+    UNUSED(env);
     int n = 0;
-    char c = fgetc(f);
+    char c = (char)fgetc(f);
     while (!is_space(c) && c != ')' && c != '(') {
-        n = 10 * n + c - 0x30;
-        c = fgetc(f);
+        n = 10 * n + (c - 0x30);
+        c = (char)fgetc(f);
     }
     ungetc(c, f);
     push(number(n));
@@ -572,17 +574,18 @@ void read_int(FILE* f, Symbol** env)
 
 void read_list(FILE* f, Symbol** env)
 {
+    char c;
     getc(f);
-    char c = fpeekc(f);
+    c = (char)fpeekc(f);
     if (c == ')') {
         getc(f);
         push(EMPTY_LIST);
         return;
     }
 
-    int ss = curstack;
+    int ss = g_sp;
     while (!feof(f)) {
-        char c = fpeekc(f);
+        c = (char)fpeekc(f);
         if (c == ')') {
             getc(f);
             break;
@@ -641,7 +644,7 @@ start:
         break;
     case ';':
         while (c != '\n') {
-            c = getc(f);
+            c = (char)getc(f);
         }
         //goto start;
         break;
@@ -661,11 +664,11 @@ value_t read_file(const char* name)
     if (f == NULL) {
         return UNBOUND;
     }
-    int ss = curstack;
+    int ss = g_sp;
     while (!feof(f)) {
-        int ss = curstack;
+        int ss1 = g_sp;
         read(f, &symtab);
-        if (ss != curstack) {
+        if (ss1 != g_sp) {
             value_t tmp = make_cell(UNBOUND);
             head(tmp) = pop();
             push(tmp);
@@ -674,10 +677,10 @@ value_t read_file(const char* name)
     fclose(f);
 
     int ss1 = ss + 1;
-    value_t cur = stack[ss];
-    while (ss1 < curstack) {
-        tail(cur) = stack[ss1];
-        cur = stack[ss1];
+    value_t cur = g_stack[ss];
+    while (ss1 < g_sp) {
+        tail(cur) = g_stack[ss1];
+        cur = g_stack[ss1];
         ss1++;
     }
     restore_stack(ss + 1);
@@ -806,11 +809,11 @@ static value_t to_bool(value_t v)
 
 void prepare_args(value_t args)
 {
-    int ss = curstack;
+    int ss = g_sp;
     push_list(args);
 
-    for (int i = ss; i < curstack; ++i) {
-        stack[i] = eval(stack[i]);
+    for (int i = ss; i < g_sp; ++i) {
+        g_stack[i] = eval(g_stack[i]);
     }
 }
 
@@ -820,10 +823,10 @@ void prepare_env(value_t args, int ss)
     if (is_list(args)) {
         for (value_t h = args; h != EMPTY_LIST; h = tail(h)) {
             if (head(h) != REST) {
-                if (ss == curstack) {
+                if (ss == g_sp) {
                     error("Not enough args");
                 }
-                env_push(stack[ss]);
+                env_push(g_stack[ss]);
                 env_push(head(h));
                 ss++;
             } else {
@@ -846,14 +849,15 @@ static inline value_t eval_sym(value_t v)
         error("Cannot eval unbound");
     }
 
-    for (int i = curenv - 1; i >= 0; i -= 2) {
-        if (env[i] == v) {
-            //printf("Sym in env:"); print(v); print(env[i-1]); NL;
-            return env[i - 1];
+    for (int i = g_env_sp - 1; i >= 0; i -= 2) {
+        if (g_env[i] == v) {
+            //printf("Sym in g_env:"); print(v); print(g_env[i-1]); NL;
+            return g_env[i - 1];
         }
     }
 
     Symbol* sym = find_symbol(sym_val(v)->name, &symtab);
+    UNUSED(sym);
 
     return sym_val(v)->binding;
 }
@@ -868,8 +872,8 @@ void _assert_nargs(int _nargs, int n)
 #define assert_nargs(n) _assert_nargs(nargs, (n))
 value_t copy_body(value_t body)
 {
-    int ss = curstack;
-    int sum, nargs;
+    int ss = g_sp;
+    //int sum, nargs;
     switch (type_of(body)) {
     case TYPE_LIST:
         if (body == EMPTY_LIST || head(body) == QUOTE) {
@@ -888,21 +892,21 @@ value_t copy_body(value_t body)
             }
         }
         // optimisation for not doing unnessessary copies
-        if (curenv == 0) {
+        if (g_env_sp == 0) {
             return body;
         }
 
         push_list(body);
-        for (int i = ss; i < curstack; ++i) {
-            stack[i] = copy_body(stack[i]);
+        for (int i = ss; i < g_sp; ++i) {
+            g_stack[i] = copy_body(g_stack[i]);
         }
         return pop_list(ss);
 
     case TYPE_SYM:
         // replace symbol from its value from environment
-        for (int i = curenv - 1; i > 0; i -= 2)
-            if (env[i] == body) {
-                return env[i - 1];
+        for (int i = g_env_sp - 1; i > 0; i -= 2)
+            if (g_env[i] == body) {
+                return g_env[i - 1];
             }
         return body;
 
@@ -926,7 +930,7 @@ value_t eval_sexp(value_t sexp, bool noeval)
     value_t fun, funtype, args, body;
     BuiltinCode code;
     int nargs, sum;
-    int ss = curstack, ee = curenv;
+    int ss = g_sp, ee = g_env_sp;
 
     int tail_macro = 1;
 
@@ -946,7 +950,7 @@ eval_top:
     case TYPE_LIST:
         push(tail(sexp));       //args
         fun = eval(head(sexp));
-    apply_top:
+apply_top:
         /* print(fun);  */
         if (type_of(fun) == TYPE_BUILTIN) {
             goto apply_builtin;
@@ -972,19 +976,19 @@ apply_builtin:
     if (code >= F_ADD) {
         push_reverse_list(args);
         if (!is_apply) {
-            for (int i = curstack - 1; i >= ss; --i) {
-                stack[i] = eval(stack[i]);
+            for (int i = g_sp - 1; i >= ss; --i) {
+                g_stack[i] = eval(g_stack[i]);
             }
         }
         is_apply = false;
     }
-    nargs = curstack - ss;
+    nargs = g_sp - ss;
 
     switch (code) {
     case F_ADD:
         assert(nargs > 0, "Too few arguments");
         sum = num_val(pop());
-        while (curstack > ss) {
+        while (g_sp > ss) {
             sum += num_val(pop());
         }
         res = number(sum);
@@ -995,7 +999,7 @@ apply_builtin:
         if (nargs == 1) {
             sum = -sum;
         }
-        while (curstack > ss) {
+        while (g_sp > ss) {
             sum -= num_val(pop());
         }
         res = number(sum);
@@ -1003,7 +1007,7 @@ apply_builtin:
     case F_MUL:
         assert(nargs > 0, "Too few arguments");
         sum = num_val(pop());
-        while (curstack > ss) {
+        while (g_sp > ss) {
             sum *= num_val(pop());
         }
         res = number(sum);
@@ -1011,7 +1015,7 @@ apply_builtin:
     case F_DIV:
         assert(nargs > 0, "Too few arguments");
         sum = num_val(pop());
-        while (curstack > ss) {
+        while (g_sp > ss) {
             number_t num = num_val(pop());
             assert(num != 0, "Division by zero");
             sum /= num;
@@ -1067,30 +1071,30 @@ apply_builtin:
     case F_TAIL:
     {
         assert_nargs(1);
-        assert_type(stack[ss], LIST);
-        res = tail(stack[ss]);
+        assert_type(g_stack[ss], LIST);
+        res = tail(g_stack[ss]);
     }
     break;
     case F_LISTP:
         assert_nargs(1);
-        res = type_of(stack[ss]) == TYPE_LIST ? T : NIL;
+        res = type_of(g_stack[ss]) == TYPE_LIST ? T : NIL;
         break;
     case F_SYMBOLP:
         assert_nargs(1);
-        res = type_of(stack[ss]) == TYPE_SYM ? T : NIL;
+        res = type_of(g_stack[ss]) == TYPE_SYM ? T : NIL;
         break;
     case F_NUMBERP:
         assert_nargs(1);
-        res = type_of(stack[ss]) == TYPE_NUM ? T : NIL;
+        res = type_of(g_stack[ss]) == TYPE_NUM ? T : NIL;
         break;
     case F_BUILTINP:
         assert_nargs(1);
-        res = type_of(stack[ss]) == TYPE_BUILTIN ? T : NIL;
+        res = type_of(g_stack[ss]) == TYPE_BUILTIN ? T : NIL;
         break;
     case B_COND:
         push_list(args);
-        for (int i = ss; i < curstack; ++i) {
-            value_t pair = stack[i];
+        for (int i = ss; i < g_sp; ++i) {
+            value_t pair = g_stack[i];
             value_t cond = head(pair);
             push(head(tail_(pair)));
             res = eval(cond);
@@ -1114,7 +1118,7 @@ apply_builtin:
     break;
     case B_OR:
         push_reverse_list(args);
-        while (curstack > ss) {
+        while (g_sp > ss) {
             res = eval(pop());
             if (res != NIL && res != EMPTY_LIST) {
                 break;
@@ -1123,7 +1127,7 @@ apply_builtin:
         break;
     case B_AND:
         push_reverse_list(args);
-        while (curstack > ss) {
+        while (g_sp > ss) {
             res = eval(pop());
             if (res == NIL) {
                 break;
@@ -1131,14 +1135,14 @@ apply_builtin:
         }
         break;
     case F_PRINT:
-        while (curstack > ss) {
+        while (g_sp > ss) {
             print(pop());
             NL;
         }
         break;
     case F_EVAL:
         assert_nargs(1);
-        res = eval(stack[ss]);
+        res = eval(g_stack[ss]);
         break;
     case F_APPLY:
     {
@@ -1150,14 +1154,14 @@ apply_builtin:
     case B_MACRO:
     case B_FN:
     {
-        int ee1 = curenv;
+        int ee1 = g_env_sp;
         body = tail(args);
         args = head(args);
         push(args);
         // avoid unnessessary replacements while expanding macros
         if (!(code == B_FN && noeval)) {
             if (is_list(args)) {
-                // push arg symbols to env twice for shadowing
+                // push arg symbols to g_env twice for shadowing
                 for (value_t h = args; h != EMPTY_LIST; h = tail(h)) {
                     if (head(h) != REST) {
                         env_push(head(h));
@@ -1177,7 +1181,7 @@ apply_builtin:
     break;
     case B_DO:
         push_reverse_list(args);
-        while (curstack > ss) {
+        while (g_sp > ss) {
             res = eval(pop());
         }
         break;
@@ -1205,16 +1209,16 @@ apply:
         push(body);
         push(args);
 
-        int ss0 = curstack;
+        int ss0 = g_sp;
         push_list(list);
-        for (int i = ss0; i < curstack; ++i) {
+        for (int i = ss0; i < g_sp; ++i) {
             if (funtype != MACRO && !is_apply) {
-                stack[i] = eval(stack[i]);
+                g_stack[i] = eval(g_stack[i]);
             }
         }
 
         is_apply = false;
-        args = stack[ss0 - 1];
+        args = g_stack[ss0 - 1];
         restore_env(ee);
 
         prepare_env(args, ss0); // argnames
@@ -1223,8 +1227,8 @@ apply:
 
         push_reverse_list(body);
 
-        while (curstack > ss) {
-            if (curstack == ss + 1) {
+        while (g_sp > ss) {
+            if (g_sp == ss + 1) {
                 if (funtype == MACRO) {
                     tail_macro += 2;
                 } else {
@@ -1251,7 +1255,7 @@ value_t eval_toplevel(value_t l)
 {
     value_t res = NIL;
     push_reverse_list(l);
-    while (curstack != 0) {
+    while (g_sp != 0) {
         value_t v = pop();
         res = eval(v);
     }
@@ -1261,19 +1265,19 @@ value_t eval_toplevel(value_t l)
 void lisp_init()
 {
     for (int i = 0; i < N_BUILTINS; ++i) {
-        builtins[i].type = TYPE_BUILTIN;
-        builtins[i].code = (BuiltinCode)i;
+        g_builtins[i].type = TYPE_BUILTIN;
+        g_builtins[i].code = (BuiltinCode)i;
         Symbol* tmp = _symbol(builtin_names[i], &symtab);
-        tmp->binding = tagptr(builtins + i, TAG_OTHER);
+        tmp->binding = tagptr(g_builtins + i, TAG_OTHER);
     }
 
-    curheap = heap = malloc(INITIAL_HEAP_SIZE);
-    lim = heap + INITIAL_HEAP_SIZE;
-    heap_size = INITIAL_HEAP_SIZE;
-    newheap = NULL;
+    g_curheap = g_heap = malloc(INITIAL_HEAP_SIZE);
+    g_lim = g_heap + INITIAL_HEAP_SIZE;
+    g_heap_size = INITIAL_HEAP_SIZE;
+    g_newheap = NULL;
 
-    stack = malloc(stack_size * sizeof(value_t));
-    env = malloc(env_size * sizeof(value_t));
+    g_stack = malloc(g_stack_size * sizeof(value_t));
+    g_env = malloc(g_env_size * sizeof(value_t));
 
     MACRO = symbol("macro", &symtab);
     FN = symbol("fn", &symtab);
@@ -1292,20 +1296,28 @@ void lisp_init()
     sym_val(REST)->binding = REST;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
     lisp_init();
     value_t sexp = read_file("system.lsp");
     eval_toplevel(sexp);
+
+    if (argc > 1) {
+        // 纯文件名或全路径文件名
+        value_t user_sexpr = read_file(argv[1]);
+        eval_toplevel(user_sexpr);
+        return 0;
+    }
+
     in_repl = true;
     while (true) {
         NL;
         printf(">");
-        int ss = curstack, ee = curenv;
+        int ss = g_sp, ee = g_env_sp;
 
         if (!setjmp(jmp_mark)) {
             read(stdin, &symtab);
-            if (ss != curstack) {
+            if (ss != g_sp) {
                 value_t res = eval(pop());
                 print(res);
             }
