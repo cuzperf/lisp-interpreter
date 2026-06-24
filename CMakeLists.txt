@@ -12,7 +12,18 @@ if (MSVC)
     source_group("examples" FILES ${Examples})
 endif()
 
-add_executable(lisp lisp.c ${Examples})
+add_executable(lisp
+    src/lisp.h
+    src/lisp_core.c
+    src/lisp_dump.c
+    src/lisp_eval.c
+    src/lisp_list.c
+    src/lisp_main.c
+    src/lisp_print.c
+    src/lisp_read.c
+    src/lisp_repl.c
+    src/lisp_symbol.c
+    ${Examples})
 
 # 增加编译选项
 if (MSVC)
