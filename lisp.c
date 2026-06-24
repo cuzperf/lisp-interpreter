@@ -98,6 +98,7 @@ const char* builtin_names[] = {
 
 value_t FN, MACRO, NIL, T, QUOTE, REST, UNQUOTE, QUASIQUOTE, UNQUOTE_SPLICING;
 
+//自己维护一个堆和栈！g_env 和 g_stack 的差异是什么呢？
 const float HEAP_RESIZE_RATIO = 2.0;
 memory_t g_heap, g_newheap, g_curheap, g_lim, g_gc_tresh;
 int g_heap_size;
@@ -521,11 +522,12 @@ static inline bool is_space(char c)
     return c == ' ' || c == '\t' || c == '\n';
 }
 
+// 从文件中取一个 char，然后回退指针，就好像没取一样
 static inline char fpeekc(FILE* f)
 {
     char c = (char)getc(f);
     /* printf("%c\n", c); */
-    ungetc(c, f);
+    ungetc(c, f);   // 把上次取出来的再退回去（之前都没用过！）
     return c;
 }
 
@@ -600,6 +602,7 @@ void read_list(FILE* f, Symbol** env)
     /* printf("%c\n", fpeekc(f)); */
 }
 
+// 读取文本，将符号记录到符号表 symtab 中，将读取的内容记录在 g_stack 中
 void read(FILE* f, Symbol** env)
 {
     char c;
