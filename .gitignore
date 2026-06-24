@@ -1,4 +1,5 @@
 vs_build/
+lx_build
 .vscode/
 lisp.exe
 lisp
