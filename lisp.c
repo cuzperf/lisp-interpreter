@@ -14,18 +14,17 @@
 
 typedef uintptr_t value_t;
 typedef int number_t;
-typedef uint8_t hash_t;
+typedef uint32_t hash_t;
 typedef uintptr_t type_t;
 typedef char* memory_t;
 
-const int MAX_HASH = 255;
 hash_t string_hash(const char* str)
 {
-    hash_t hash = 7;
+    hash_t hash = 0x123456;
     for (int i = 0; str[i] != '\0'; ++i) {
         hash += (hash_t)str[i];
     }
-    return (hash_t)(hash % MAX_HASH);
+    return (hash_t)(hash ^ 0x0A0A0A0A);
 }
 
 #define TAG_NUM 0x0
