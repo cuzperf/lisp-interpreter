@@ -7,7 +7,7 @@
 
 Builtin g_builtins[N_BUILTINS];
 
-extern const char* builtin_names[N_BUILTINS + 1] = {
+const char* builtin_names[N_BUILTINS + 1] = {
 #define XX(symbol, name) name,
     CL_BUILTIN_FUNCTIONS(XX)
 #undef XX

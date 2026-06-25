@@ -482,6 +482,7 @@ static value_t eval_sym(value_t v)
 }
 
 // 未被使用
+#if 0
 static void prepare_args(value_t args)
 {
     int ss = g_sp;
@@ -491,3 +492,4 @@ static void prepare_args(value_t args)
         g_stack[i] = eval(g_stack[i]);
     }
 }
+#endif

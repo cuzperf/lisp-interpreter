@@ -10,6 +10,9 @@ if (MSVC)
     file(GLOB Examples "${CMAKE_SOURCE_DIR}/examples/*")
     set_source_files_properties(${Examples} PROPERTIES HEADER_FILE_ONLY TRUE)
     source_group("examples" FILES ${Examples})
+
+    # 将 system.lsp 加入到工程
+    set_source_files_properties(system.lsp PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 
 add_executable(lisp
@@ -23,18 +26,25 @@ add_executable(lisp
     src/lisp_read.c
     src/lisp_repl.c
     src/lisp_symbol.c
+
+    system.lsp
     ${Examples})
 
 # 增加编译选项
 if (MSVC)
     # 部分 VS 版本 add_compile_options 不生效
     target_compile_options(lisp PRIVATE
-        /W4      # 警告等级4
-        /WX      # 警告视为错误
-        /wd4996  # 忽略 C4996  #'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead.
+        /WX         # 警告视为错误
+        /W4         # 警告等级4
+        /wd4996     # 忽略 C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead.
+        /wd4200     # 忽略 C4200: 使用了非标准扩展: 结构/联合中的零大小数组.
     )
 else()
-     add_compile_options(-Werror -Wall -Wextra)
+    target_compile_options(lisp PRIVATE
+        -Werror     # 警告视为错误
+        -Wall       # 常规警告
+        -Wextra     # 额外警告
+    )
 endif()
 
 # VS 特有配置
