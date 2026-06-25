@@ -1,12 +1,33 @@
 #include "lisp.h"
 
+/**
+ * 本文件对外提供三个接口函数 push_list, pop_list, make_list
+ */
+
+// NOTE: 这里的 List 除了 EMPTY_LIST 外都是堆上的元素 [陈智鹏@2026-6-26]
+/*  (a (b c) d)
+*
+*  [a|●]--→[●|●]──→[d|EMPTY_LIST]
+*             |
+*             |
+*            [b|●]──→[c|EMPTY_LIST]
+*/
+
+/**
+ * @brief 将 List 逐元素压栈
+ */
 void push_list(value_t l)
 {
     for (value_t v = l; v != EMPTY_LIST; v = tail_(v)) {
+        assert_type(v, LIST);
         push(head_(v));
     }
 }
 
+/**
+ * @brief 逐个出栈直到 g_sp 等于 ss
+ * @return 以 g_stack[ss] 为顶元素的 List
+ */
 value_t pop_list(int ss)
 {
     push(EMPTY_LIST);
@@ -18,6 +39,9 @@ value_t pop_list(int ss)
     return pop();
 }
 
+/**
+ * @brief 将可变参数个元素，构建成一个以 h 为顶元素的 List
+ */
 value_t make_list(value_t h, ...)
 {
     va_list args;
