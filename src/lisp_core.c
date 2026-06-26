@@ -3,7 +3,7 @@
 #define INITIAL_HEAP_SIZE (64000)
 #define STACK_SIZE (160 * 1024)
 #define ENV_SIZE (160 * 1024)
-#define HEAP_RESIZE_RATIO (2.0)
+#define HEAP_RESIZE_RATIO (1.5)
 
 Builtin g_builtins[N_BUILTINS];
 

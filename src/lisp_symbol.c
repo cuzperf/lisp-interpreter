@@ -1,5 +1,8 @@
 #include "lisp.h"
 
+/**
+ * @brief 字符串 hash, 随便乱写的，能达到相同字符 hash 值相同即可
+ */
 static hash_t string_hash(const char* str)
 {
     hash_t hash = 0x123456;
@@ -9,7 +12,10 @@ static hash_t string_hash(const char* str)
     return (hash_t)(hash ^ 0x0A0A0A0A);
 }
 
-// symbol 用的是 C 的堆，故而无需被 gc 控制！
+/**
+ * @brief 创建一个简单的符号，并计算其 Hash 值
+ * @note symbol 用的是 C 的堆，故而无需被 gc 控制！
+ */
 static Symbol* make_symbol(const char* name)
 {
     Symbol* sym = malloc(sizeof(Symbol) + strlen(name));

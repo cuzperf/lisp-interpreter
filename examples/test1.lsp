@@ -1,3 +1,4 @@
+(def a -5)
 (def x ;)
 2)
 ;(def x 2)
