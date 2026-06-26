@@ -177,7 +177,7 @@ void gc()
     int ee = g_env_sp - 2;
 
     while (ee >= 0) {
-        if (type_of(g_env_stack[ee] != TYPE_SYM)) {
+        if (type_of(g_env_stack[ee]) != TYPE_SYM) {
             g_env_stack[ee] = relocate(g_env_stack[ee]);
         }
         ee -= 2;

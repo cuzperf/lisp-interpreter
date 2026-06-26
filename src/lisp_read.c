@@ -65,7 +65,7 @@ static void read_int(FILE* f, Symbol** env)
     UNUSED(env);
     int n = 0;
     char c = (char)fgetc(f);
-    while (!is_space(c) && c != ')' && c != '(') {
+    while (c >= '0' && c <= '9') {
         n = 10 * n + (c - 0x30);
         c = (char)fgetc(f);
     }

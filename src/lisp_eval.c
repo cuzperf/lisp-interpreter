@@ -464,9 +464,11 @@ static void prepare_env(value_t args, int ss)
 
 static value_t eval_sym(value_t v)
 {
+#if 0
     if (v == UNBOUND) {
         error("Cannot eval unbound");
     }
+#endif
 
     for (int i = g_env_sp - 1; i >= 0; i -= 2) {
         if (g_env_stack[i] == v) {
