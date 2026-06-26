@@ -1,17 +1,40 @@
 #include "lisp.h"
 
 /**
- * 本文件对外提供三个接口函数 push_list, pop_list, make_list
+ * 本文件对外提供五个接口函数 cons_, cons, push_list, pop_list, make_list
  */
 
-// NOTE: 这里的 List 除了 EMPTY_LIST 外都是堆上的元素 [陈智鹏@2026-6-26]
-/*  (a (b c) d)
-*
-*  [a|●]--→[●|●]──→[d|EMPTY_LIST]
-*             |
-*             |
-*            [b|●]──→[c|EMPTY_LIST]
-*/
+ // NOTE: 这里的 List 除了 EMPTY_LIST 外都是堆上的元素 [陈智鹏@2026-6-26]
+ /*  (a (b c) d)
+ *
+ *  [a|●]--→[●|●]──→[d|EMPTY_LIST]
+ *             |
+ *             |
+ *            [b|●]──→[c|EMPTY_LIST]
+ */
+
+/**
+ * @brief 创建 (h . t) 的 List 单元（不要求 t 为 List ）
+ * @note 注意 make_cell 可能会触发 gc 从而导致 h 和 t 指向的内容失效
+ */
+value_t cons_(value_t h, value_t t)
+{
+    push(h);
+    push(t);
+    value_t cell = make_cell(UNBOUND);
+    tail_(cell) = pop();
+    head_(cell) = pop();
+    return cell;
+}
+
+/**
+ * @brief 创建 (h . t) 的 List 单元（要求 t 为 List ）
+ */
+value_t cons(value_t h, value_t t)
+{
+    assert_type(t, LIST);
+    return cons_(h, t);
+}
 
 /**
  * @brief 将 List 逐元素压栈

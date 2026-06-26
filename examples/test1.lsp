@@ -1,3 +1,6 @@
+(def x ;)
+2)
+;(def x 2)
 (def a 2)
 (* a 3)
 (print a)

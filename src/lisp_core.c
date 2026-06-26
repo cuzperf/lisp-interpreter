@@ -15,8 +15,9 @@ const char* builtin_names[N_BUILTINS + 1] = {
 
 value_t FN, MACRO, NIL, T, QUOTE, REST, UNQUOTE, QUASIQUOTE, UNQUOTE_SPLICING;
 
-memory_t g_heap, g_newheap, g_curheap, g_lim, g_gc_tresh;
 int g_heap_size;
+memory_t g_heap, g_curheap;
+static memory_t g_newheap, g_lim, g_gc_tresh;
 
 Symbol* symtab = NULL;
 

@@ -163,7 +163,7 @@ value_t env_pop();
 void env_restore_stack(int n);
 
 typedef char* memory_t;
-extern memory_t g_heap, g_newheap, g_curheap, g_lim, g_gc_tresh;
+extern memory_t g_heap, g_curheap;
 extern int g_heap_size;
 
 extern value_t FN, MACRO, NIL, T, QUOTE, REST, UNQUOTE, QUASIQUOTE, UNQUOTE_SPLICING;

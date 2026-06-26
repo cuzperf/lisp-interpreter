@@ -1,21 +1,5 @@
 #include "lisp.h"
 
-value_t cons_(value_t h, value_t t)
-{
-    push(h);
-    push(t);
-    value_t cell = make_cell(UNBOUND);
-    tail_(cell) = pop();
-    head_(cell) = pop();
-    return cell;
-}
-
-value_t cons(value_t h, value_t t)
-{
-    assert_type(t, LIST);
-    return cons_(h, t);
-}
-
 static hash_t string_hash(const char* str)
 {
     hash_t hash = 0x123456;
@@ -25,6 +9,7 @@ static hash_t string_hash(const char* str)
     return (hash_t)(hash ^ 0x0A0A0A0A);
 }
 
+// symbol 用的是 C 的堆，故而无需被 gc 控制！
 static Symbol* make_symbol(const char* name)
 {
     Symbol* sym = malloc(sizeof(Symbol) + strlen(name));
