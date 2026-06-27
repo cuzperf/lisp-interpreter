@@ -389,6 +389,9 @@ end:
     return res;
 }
 
+/**
+ * @brief 判断两个值是否一致（而非内存一致）
+ */
 static value_t eqp(value_t v1, value_t v2)
 {
     if (type_of(v1) != TYPE_LIST || type_of(v2) != TYPE_LIST) {
@@ -405,6 +408,12 @@ static value_t eqp(value_t v1, value_t v2)
     return v1 == v2 ? T : NIL;
 }
 
+/**
+ * 
+ * @brief 闭包创建时的变量捕获函数
+ * 当解释器执行 fn 或 macro 时调用，它深拷贝函数体
+ * 同时将当前环境中绑定的自由变量替换为实际值 —实现深拷贝捕获语义
+ */
 static value_t copy_body(value_t body)
 {
     int ss = g_sp;
@@ -439,10 +448,11 @@ static value_t copy_body(value_t body)
 
     case TYPE_SYM:
         // replace symbol from its value from environment
-        for (int i = g_env_sp - 1; i > 0; i -= 2)
+        for (int i = g_env_sp - 1; i > 0; i -= 2) {
             if (g_env_stack[i] == body) {
                 return g_env_stack[i - 1];
             }
+        }
         return body;
 
     default:
@@ -461,7 +471,7 @@ static void prepare_env(value_t args, int ss)
                 }
                 env_push(g_stack[ss]);
                 env_push(head(h));
-                ss++;
+                ++ss;
             } else {
                 args = head(tail(h));
                 break;
@@ -469,13 +479,20 @@ static void prepare_env(value_t args, int ss)
         }
     }
 
+    // NOTE: 注意在前面的判断中, args 可能被改变 [陈智鹏@2026-6-29]
     if (!is_list(args)) {
         env_push(pop_list(ss));
         env_push(args);
     }
+
     restore_stack(sp);
 }
 
+/**
+ * @note 环境栈 g_env_stack 的布局是 [值, 符号名, 值, 符号名, ...]，每对是 [value, symbol]。遇到符号时倒序查找：
+ * 找到 → 返回符号当前绑定的值（替换为实际值，完成捕获）
+ * 没找到 → 返回符号本身（自由变量，运行时在全局环境查找）
+ */
 static value_t eval_sym(value_t v)
 {
 #if 0
