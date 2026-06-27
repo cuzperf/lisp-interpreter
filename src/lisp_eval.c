@@ -1,5 +1,9 @@
 #include "lisp.h"
 
+/**
+ * @brief 将 list 元素反向压栈
+ * @note 没有将其放在 lisp_list.c 中，是因为仅在此文件中被使用，所以没必要暴露
+ */
 static void push_reverse_list(value_t l)
 {
     if (l == EMPTY_LIST) {
@@ -9,9 +13,13 @@ static void push_reverse_list(value_t l)
     push(head(l));
 }
 
+/**
+ * @brief 顶层求值，先反序压栈，再从最底层网上求值
+ */
 value_t eval_toplevel(value_t l)
 {
     value_t res = NIL;
+    assert(g_sp == 0, "g_sp should be 0 when calling eval_toplevel");
     push_reverse_list(l);
     while (g_sp != 0) {
         value_t v = pop();
@@ -20,7 +28,8 @@ value_t eval_toplevel(value_t l)
     return res;
 }
 
-static value_t eval_sexp(value_t, bool);
+static value_t eval_sexp(value_t sexp, bool noeval);
+
 static value_t expand(value_t v)
 {
     return eval_sexp(v, true);
@@ -49,8 +58,13 @@ static value_t copy_body(value_t body);
 static void prepare_env(value_t args, int ss);
 static value_t eval_sym(value_t v);
 
+/**
+ * @brief 本文件中最核心的函数
+ */
 static value_t eval_sexp(value_t sexp, bool noeval)
 {
+    //printf("\neval_sexp:\n");
+    //print(sexp);
     value_t fun, funtype, args, body;
     BuiltinCode code;
     int nargs, sum;
@@ -483,7 +497,7 @@ static value_t eval_sym(value_t v)
     return sym_val(v)->binding;
 }
 
-// 鏈浣跨敤
+// 未被使用
 #if 0
 static void prepare_args(value_t args)
 {

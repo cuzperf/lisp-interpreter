@@ -45,6 +45,7 @@ typedef uintptr_t type_t;
 #define head_(l) (list_val(l)->head)
 #define tail_(l) (list_val(l)->tail)
 #define assert(cond, ...) do { if (!(cond)) error(__VA_ARGS__); } while(0)
+// NOTE: # 和 ## 操作符会阻止其操作数的进一步宏展开，嵌套一层是为了让参数在"见到" # 之前先完成自身的宏展开 [陈智鹏@2026-6-27]。
 #define str(x) _str(x)
 #define _str(x) #x
 #define assert_type(val, type) \
