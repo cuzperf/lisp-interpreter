@@ -151,7 +151,7 @@ start:
         read_int(f, env);
         break;
     case ';':
-        while (c != '\n') {
+        while (c != EOF && c != '\n') {
             c = (char)getc(f);
         }
         goto start;
