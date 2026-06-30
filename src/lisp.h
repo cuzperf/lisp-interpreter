@@ -133,6 +133,9 @@ void read(FILE* f, Symbol** env);
 
 // lisp_print.c
 void print(value_t v);
+void println(value_t v);
+void pprint(value_t v);
+void smprint(value_t v);
 
 // lisp_dump.c
 void dump_symtab(Symbol* s);
