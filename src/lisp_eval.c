@@ -89,14 +89,15 @@ eval_top:
         push(tail(sexp));       //args
         fun = eval(head(sexp));
 apply_top:
-        /* print(fun);  */
+        //println(fun);
+        //println(top());
         if (type_of(fun) == TYPE_BUILTIN) {
             goto apply_builtin;
         }
 
         if (type_of(fun) == TYPE_LIST) {
-            args = (head(tail(fun)));   //args
-            body = tail(tail(fun));     //body
+            args = (head(tail(fun)));   // 形参
+            body = tail(tail(fun));     // 函数体
             goto apply;
         }
         print(fun);
@@ -250,7 +251,10 @@ apply_builtin:
     {
         const char* name = sym_val(head(args))->name;
         value_t sym = symbol(name, &symtab);
+        println(tail_(args));
+        println(head(tail_(args)));
         res = eval(head(tail_(args)));
+        println(res);
         sym_val(sym)->binding = res;
     }
     break;
@@ -274,8 +278,7 @@ apply_builtin:
         break;
     case F_PRINT:
         while (g_sp > ss) {
-            print(pop());
-            NL;
+            println(pop());
         }
         break;
     case F_EVAL:
@@ -343,11 +346,15 @@ apply:
     {
         funtype = head(fun);
         assert(funtype == FN || funtype == MACRO, "Applying not a function!!!!!");
-        value_t list = pop();
+        value_t list = pop();   // 入参
+        println(list);
+        println(args);          // 形参
+        println(body);          // 函数体
         push(body);
         push(args);
 
         int ss0 = g_sp;
+        println(list);
         push_list(list);
         for (int i = ss0; i < g_sp; ++i) {
             if (funtype != MACRO && !is_apply) {
@@ -362,6 +369,9 @@ apply:
         prepare_env(args, ss0); // argnames
         args = pop();
         body = pop();
+
+        println(args);          // 形参
+        println(body);          // 函数体
 
         push_reverse_list(body);
 
@@ -462,6 +472,7 @@ static value_t copy_body(value_t body)
 
 static void prepare_env(value_t args, int ss)
 {
+    println(args);
     int sp = ss;
     if (is_list(args)) {
         for (value_t h = args; h != EMPTY_LIST; h = tail(h)) {

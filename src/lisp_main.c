@@ -10,6 +10,7 @@ int main(int argc, char* argv[])
     if (argc > 1) {
         // 纯文件名或全路径文件名
         value_t user_sexpr = read_file(argv[1]);
+        //smprint(user_sexpr);
         eval_toplevel(user_sexpr);
     } else {
         lisp_repl();
