@@ -34,6 +34,15 @@ static void skip_spaces(FILE* f)
     ungetc(c, f);
 }
 
+static void skip_comments(FILE* f)
+{
+    char c = (char)fgetc(f);
+    while (c != EOF && c != '\n') {
+        c = (char)getc(f);
+    }
+    ungetc(c, f);
+}
+
 #define MAX_NAME (256)
 /**
  * @note 向符号环境中补充一个符号（如果符号环境中没有）
@@ -94,6 +103,10 @@ static void read_list(FILE* f, Symbol** env)
             getc(f);
             break;
         }
+        if (c == ';') {
+            skip_comments(f);
+            continue;
+        }
         if (is_space(c)) {
             skip_spaces(f);
             continue;
@@ -151,8 +164,10 @@ start:
         read_int(f, env);
         break;
     case ';':
-        while (c != EOF && c != '\n') {
-            c = (char)getc(f);
+        skip_comments(f);
+        if (c == EOF) {
+            push(NIL);
+            break;
         }
         goto start;
         break;
