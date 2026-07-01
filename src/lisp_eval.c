@@ -519,7 +519,7 @@ static value_t eval_sym(value_t v)
         }
     }
 
-    Symbol* sym = find_symbol(sym_val(v)->name, &symtab);
+    Symbol* sym = _symbol(sym_val(v)->name, &symtab);
     UNUSED(sym);
 
     return sym_val(v)->binding;

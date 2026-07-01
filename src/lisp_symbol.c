@@ -26,22 +26,51 @@ static Symbol* make_symbol(const char* name)
     return sym;
 }
 
-// find symbol in an environment
-static Symbol* _find_symbol(const char* name, hash_t hash, Symbol* root)
+#if 0
+static Symbol** symbol_lookup(const char* name, Symbol** env)
 {
-    if (root == NULL) {
+    if (*env == NULL) {
+        return env;
+    }
+    hash_t hash = string_hash(name);
+    while (*env != NULL) {
+        if (hash == (*env)->hash && strcmp(name, (*env)->name)) {
+            return env;
+        }
+
+        if (hash < (*env)->hash) {
+            env = &(*env)->left;
+        } else {
+            env = &(*env)->right;
+        }
+    }
+    return env;
+}
+
+Symbol* _symbol(const char* name, Symbol** env)
+{
+    Symbol** t = symbol_lookup(name, env);
+    if (*t == NULL) {
+        *t = make_symbol(name);
+    }
+    return *t;
+}
+#else
+static Symbol* _find_symbol(const char* name, hash_t hash, Symbol* env)
+{
+    if (env == NULL) {
         return NULL;
     }
-    if (hash == root->hash) {
-        if (!strcmp(name, root->name)) {
-            return root;
+    if (hash == env->hash) {
+        if (!strcmp(name, env->name)) {
+            return env;
         }
     }
 
-    if (hash > root->hash) {
-        return _find_symbol(name, hash, root->right);
+    if (hash > env->hash) {
+        return _find_symbol(name, hash, env->right);
     }
-    return _find_symbol(name, hash, root->left);
+    return _find_symbol(name, hash, env->left);
 }
 
 Symbol* find_symbol(const char* name, Symbol** env)
@@ -53,19 +82,19 @@ Symbol* find_symbol(const char* name, Symbol** env)
     return _find_symbol(name, hash, *env);
 }
 
-static void _add_symbol(Symbol* sym, Symbol* root)
+static void _add_symbol(Symbol* sym, Symbol* env)
 {
-    if (sym->hash > root->hash) {
-        if (root->right == NULL) {
-            root->right = sym;
+    if (sym->hash > env->hash) {
+        if (env->right == NULL) {
+            env->right = sym;
         } else {
-            _add_symbol(sym, root->right);
+            _add_symbol(sym, env->right);
         }
     } else {
-        if (root->left == NULL) {
-            root->left = sym;
+        if (env->left == NULL) {
+            env->left = sym;
         } else {
-            _add_symbol(sym, root->left);
+            _add_symbol(sym, env->left);
         }
     }
     return;
@@ -87,6 +116,7 @@ Symbol* _symbol(const char* name, Symbol** env)
     Symbol* t = find_symbol(name, env);
     return t != NULL ? t : add_symbol(name, env);
 }
+#endif
 
 value_t symbol(const char* name, Symbol** env)
 {
