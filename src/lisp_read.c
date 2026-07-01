@@ -129,6 +129,9 @@ void read(FILE* f, Symbol** env)
 start:
     c = fpeekc(f);
     switch (c) {
+    case EOF:
+        push(NIL);
+        break;
     case '(':
         read_list(f, env);
         break;
@@ -165,10 +168,6 @@ start:
         break;
     case ';':
         skip_comments(f);
-        if (c == EOF) {
-            push(NIL);
-            break;
-        }
         goto start;
         break;
     case ')':
